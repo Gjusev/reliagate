@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reliagate"
+version = "0.1.0"
+description = "Reliability metrics and statistically sound CI gates for AI agents evaluated with repeated runs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Youssef Ouhaghi" }]
+keywords = ["llm-agents", "evaluation", "statistics", "pass-k", "mcnemar", "ci-gate"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+# zero dependencies -- the core is pure stdlib by design
+dependencies = []
+
+[project.optional-dependencies]
+# reserved for future lazy adapters (inspect-ai, langfuse); nothing yet
+
+[project.scripts]
+reliagate = "reliagate.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Gjusev/reliagate"
+
+[tool.setuptools.packages.find]
+include = ["reliagate*"]
