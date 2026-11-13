@@ -17,14 +17,27 @@ the normal regime for agent evals.  Following standard practice
 
 The mid-p variant assigns the observed table half its exact probability,
 correcting the conservativeness of the discrete exact test.
+
+Companion statistics (computed alongside every McNemar):
+
+* ``wilcoxon`` -- Wilcoxon signed-rank on d_x = c_x_new - c_x_base
+  (reliability paper section 2.2): catches partial consistency shifts
+  (e.g. 1 -> 2 of 3) that the binary indicator discards.
+* ``newcombe`` -- Newcombe hybrid-score interval on the difference of
+  the two consistency proportions (McNemar alone yields no interval).
+* ``task_categories`` + ``correction`` -- per-category McNemar tests
+  with Holm (gates) or Benjamini-Hochberg (dashboards) adjustment over
+  the family.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import Optional
 
 from .model import EvalRun, consistency_classes, group_by_task, task_counts
+from .stats import correct_pvalues, newcombe_paired, wilcoxon_signed_rank
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +104,11 @@ class ComparisonResult:
     new_pass_pow_n: float
     class_changes: list[dict] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # companion statistics (all None-safe: present only when computed)
+    wilcoxon: Optional[dict] = None       # signed-rank on d_x = c_new - c_base
+    newcombe: Optional[dict] = None       # hybrid-score interval on p1 - p2
+    category_tests: list[dict] = field(default_factory=list)
+    correction: Optional[dict] = None     # multiplicity correction metadata
 
     @property
     def is_significant_at_0_05(self) -> bool:
@@ -109,12 +127,65 @@ def _validate_paired(base: EvalRun, new: EvalRun) -> None:
         )
 
 
+def _wilcoxon_dict(base_counts: dict, new_counts: dict, task_ids) -> Optional[dict]:
+    """Signed-rank on paired d_x = c_x_new - c_x_base (arXiv:2604.17849 2.2)."""
+    diffs = [new_counts[t][0] - base_counts[t][0] for t in task_ids]
+    r = wilcoxon_signed_rank(diffs)
+    return {
+        "n_pairs": r.n_pairs,
+        "n_nonzero": r.n_nonzero,
+        "w": r.w,
+        "w_plus": r.w_plus,
+        "w_minus": r.w_minus,
+        "p_value": r.p_value,
+        "method": r.method,
+        "z_statistic": r.z_statistic,
+        "notes": r.notes,
+    }
+
+
+def _newcombe_dict(base_classes: dict, new_classes: dict) -> dict:
+    """Newcombe hybrid-score interval on the consistency-indicator difference."""
+    a = sum(1 for t in base_classes
+            if base_classes[t] == "consistent" and new_classes[t] == "consistent")
+    b = sum(1 for t in base_classes
+            if base_classes[t] != "consistent" and new_classes[t] == "consistent")
+    c = sum(1 for t in base_classes
+            if base_classes[t] == "consistent" and new_classes[t] != "consistent")
+    d = sum(1 for t in base_classes
+            if base_classes[t] != "consistent" and new_classes[t] != "consistent")
+    n = a + b + c + d
+    lo, hi = newcombe_paired(a, b, c, d)
+    return {
+        "table": {"both": a, "gained": b, "lost": c, "neither": d},
+        "difference": (b - c) / n,
+        "ci": (lo, hi),
+        "method": "newcombe hybrid score (paired)",
+    }
+
+
 def compare(
     base: EvalRun,
     new: EvalRun,
     test: str = "auto",
+    correction: Optional[str] = None,
+    task_categories: Optional[dict] = None,
 ) -> ComparisonResult:
-    """Paired McNemar on per-task 'consistently solved' indicators."""
+    """Paired McNemar on per-task 'consistently solved' indicators.
+
+    Companion statistics computed alongside the McNemar p-value:
+
+    * ``wilcoxon`` -- signed-rank on the paired per-task success-count
+      differences d_x = c_x_new - c_x_base (catches partial consistency
+      shifts that the binary indicator discards).
+    * ``newcombe`` -- hybrid-score interval on the difference of the
+      consistency proportions (McNemar alone yields no interval).
+
+    With ``task_categories`` ({task_id: category}) a per-category McNemar
+    is run for each category, and ``correction`` ("holm" for gates, "bh"
+    for dashboards) adjusts the family of category p-values.  Without a
+    family, ``correction`` is ignored.
+    """
     _validate_paired(base, new)
     base_classes = consistency_classes(base)
     new_classes = consistency_classes(new)
@@ -151,6 +222,51 @@ def compare(
                 f"{name} run has abstained trials counted in n: {abst}"
             )
 
+    wil = _wilcoxon_dict(base_counts, new_counts, base_classes.keys())
+    nc = _newcombe_dict(base_classes, new_classes)
+
+    category_tests: list[dict] = []
+    correction_report: Optional[dict] = None
+    if task_categories:
+        missing = sorted(set(base_classes) - set(task_categories))
+        if missing:
+            raise ValueError(
+                f"task_categories missing entries for tasks: {missing}"
+            )
+        categories = sorted(set(task_categories[t] for t in base_classes))
+        for cat in categories:
+            cat_tasks = [t for t in base_classes if task_categories[t] == cat]
+            cat_base = EvalRun(
+                name=f"{base.name}:{cat}",
+                runs=[r for r in base.runs if r.task_id in set(cat_tasks)],
+            )
+            cat_new = EvalRun(
+                name=f"{new.name}:{cat}",
+                runs=[r for r in new.runs if r.task_id in set(cat_tasks)],
+            )
+            sub = compare(cat_base, cat_new, test=test)
+            category_tests.append({
+                "category": cat,
+                "n_tasks": sub.n_tasks,
+                "b": sub.b,
+                "c": sub.c,
+                "p_value": sub.p_value,
+                "test_used": sub.test_used,
+                "newcombe": sub.newcombe,
+                "adjusted_p_value": None,
+            })
+        if correction is not None:
+            family = correct_pvalues(
+                [ct["p_value"] for ct in category_tests], correction
+            )
+            for ct, adj in zip(category_tests, family["adjusted"]):
+                ct["adjusted_p_value"] = adj
+            correction_report = {
+                "method": family["method"],
+                "controls": family["controls"],
+                "n_hypotheses": len(category_tests),
+            }
+
     return ComparisonResult(
         b=b,
         c=c,
@@ -165,4 +281,8 @@ def compare(
         new_pass_pow_n=new_consistent / n_tasks,
         class_changes=changes,
         notes=notes,
+        wilcoxon=wil,
+        newcombe=nc,
+        category_tests=category_tests,
+        correction=correction_report,
     )

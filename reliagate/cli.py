@@ -124,6 +124,33 @@ def main(argv: list[str] | None = None) -> int:
         print(f"tasks: {cmp.n_tasks}")
         print(f"b (gained consistent)={cmp.b}  c (lost)={cmp.c}  b-c={cmp.b_minus_c}")
         print(f"test={cmp.test_used}  p={cmp.p_value:.4g}")
+        if cmp.newcombe:
+            lo, hi = cmp.newcombe["ci"]
+            print(
+                f"newcombe paired 95% CI on difference: "
+                f"[{lo:+.4f}, {hi:+.4f}] (point {cmp.newcombe['difference']:+.4f})"
+            )
+        if cmp.wilcoxon and cmp.wilcoxon["method"] != "degenerate":
+            print(
+                f"wilcoxon signed-rank ({cmp.wilcoxon['method']}, "
+                f"n={cmp.wilcoxon['n_nonzero']}): p={cmp.wilcoxon['p_value']:.4g}"
+            )
+        elif cmp.wilcoxon:
+            print("wilcoxon signed-rank: all paired differences are zero "
+                  "(no evidence of any shift; test undefined)")
+        for ct in cmp.category_tests:
+            adj = ct["adjusted_p_value"]
+            adj_s = f"  adj_p={adj:.4g}" if adj is not None else ""
+            print(
+                f"category {ct['category']!r}: b={ct['b']} c={ct['c']} "
+                f"p={ct['p_value']:.4g} ({ct['test_used']}){adj_s}"
+            )
+        if cmp.correction:
+            print(
+                f"correction: {cmp.correction['method']} over "
+                f"{cmp.correction['n_hypotheses']} categories "
+                f"({cmp.correction['controls']})"
+            )
         for change in cmp.class_changes:
             print(
                 f"class change: {change['task_id']}: "

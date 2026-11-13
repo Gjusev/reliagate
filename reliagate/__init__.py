@@ -26,6 +26,16 @@ from .compare import (
     mcnemar_exact,
     mcnemar_midp,
 )
+from .stats import (
+    WilcoxonResult,
+    average_ranks,
+    benjamini_hochberg_adjust,
+    correct_pvalues,
+    hierarchical_bootstrap,
+    holm_adjust,
+    newcombe_paired,
+    wilcoxon_signed_rank,
+)
 from .planning import (
     PlanResult,
     SprtResult,
@@ -66,6 +76,14 @@ __all__ = [
     "compare",
     "mcnemar_exact",
     "mcnemar_midp",
+    "WilcoxonResult",
+    "average_ranks",
+    "benjamini_hochberg_adjust",
+    "correct_pvalues",
+    "hierarchical_bootstrap",
+    "holm_adjust",
+    "newcombe_paired",
+    "wilcoxon_signed_rank",
     "PlanResult",
     "SprtResult",
     "consistency_settled",
