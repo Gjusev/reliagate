@@ -2,23 +2,25 @@
 
 ## Where this stopped
 
-v0.1.0 is committed and pushed. The core library is complete and offline-tested:
+v0.1.0 + first real study + deferred statistics are committed. The library is complete, offline-tested, and validated on real data:
 
 - `reliagate/model.py` -- Run/EvalRun, abstention accounting (None = abstained, counted in n, never a failure)
 - `reliagate/metrics.py` -- pass^k, unbiased pass@k, consistency classes, Wilson CI, task-level bootstrap, rule-of-three
-- `reliagate/compare.py` -- McNemar exact (< 25 discordant) / mid-p (>= 25), class-change table
+- `reliagate/compare.py` -- McNemar exact (< 25 discordant) / mid-p (>= 25), class-change table, PLUS wilcoxon + newcombe companions and per-category Holm/BH correction
+- `reliagate/stats.py` -- Wilcoxon signed-rank, Holm/BH, hierarchical bootstrap, Newcombe paired interval (ROADMAP items 2, 3, 4, 7)
 - `reliagate/planning.py` -- `required_runs`/`plan` (seeded simulation), `sprt_stop`, `consistency_settled`
 - `reliagate/gate.py` + `reliagate/cli.py` -- gate CLI with exit codes 0/2/3
 - `reliagate/adapters/` -- JSONL (stdlib), nitelos (lazy mapping), runner with concurrency + cost budget and the opt-in live Z.ai path
-- `tests/` -- 90 tests, all green with `python3 -m unittest`
+- `scripts/first_study.py` + `docs/results/first-study.md` -- the first real study (gate-calibrated tau-bench retail), deterministic and rerunnable, no LLM calls
+- `tests/` -- 141 tests, all green with `python3 -m unittest`
 
-Everything is validated against paper formulas and brute-force enumeration -- NOT against real benchmark data. ROADMAP item 1 is the next job.
+ROADMAP items 1-4 and 7 are done. Remaining: Inspect/Langfuse adapters (5, 6), alpha spending (8), PyPI release (9).
 
 ## Next steps (in order)
 
-1. **ROADMAP item 1**: pull tau-bench retail trajectories from `Gjusev/gate-calibrated`, convert to JSONL, run the first real study, add `examples/tau_retail.md`.
-2. Implement ROADMAP item 2 (Wilcoxon companion test).
-3. After item 1 validates: PyPI release (item 9).
+1. Consider a second dataset (e.g. tau-bench airline) -- the first study's policy comparisons are all null/underpowered (~0.03-0.05 effects need 700-2200 paired tasks).
+2. Implement ROADMAP item 5 or 6 (adapter stubs).
+3. PyPI release (item 9).
 
 ## Non-negotiable constraints
 
