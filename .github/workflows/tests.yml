@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests (offline, zero dependencies)
+        run: python -m unittest discover -v
+      - name: CLI gate exit codes
+        if: matrix.python == '3.13' && matrix.os == 'ubuntu-latest'
+        run: |
+          python - <<'EOF'
+          import json, subprocess, sys, tempfile, os
+          tmp = tempfile.mkdtemp()
+          def w(name, rows):
+              with open(os.path.join(tmp, name), "w") as fh:
+                  for r in rows:
+                      fh.write(json.dumps(r) + "\n")
+          w("base.jsonl", [{"task_id": f"t{i}", "attempt": 0, "success": True} for i in range(10)])
+          w("new.jsonl", [{"task_id": f"t{i}", "attempt": 0, "success": True} for i in range(10)])
+          p = subprocess.run([sys.executable, "-m", "reliagate", "gate",
+                              "--base", os.path.join(tmp, "base.jsonl"),
+                              "--new", os.path.join(tmp, "new.jsonl")])
+          assert p.returncode == 0, p.returncode
+          print("gate exit-code check: OK")
+          EOF
