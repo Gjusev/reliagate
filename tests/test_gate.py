@@ -104,9 +104,10 @@ class TestGateCLI(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run_cli(self, *args):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return subprocess.run(
             [sys.executable, "-m", "reliagate", "gate", *args],
-            capture_output=True, text=True, cwd="/root/reliagate",
+            capture_output=True, text=True, cwd=repo_root,
         )
 
     def test_exit_0_on_pass(self):
