@@ -14,10 +14,10 @@
 
 <p align="center">
   <a href="assets/video/reliagate.mp4">
-    <img src="assets/video/preview.gif" alt="A 3x3 grid of trial dots fills; one stays hollow, one turns amber, then a confidence-interval bracket draws above" width="720">
+    <img src="assets/video/preview.gif" alt="reliagate: the animated mark beside the headline number, 141 offline tests, zero dependencies" width="720">
   </a>
   <br>
-  <sub><a href="assets/video/reliagate.mp4">Watch the 8-second film (MP4, 0.1 MB)</a>. Every number in it comes from the committed results in this repo.</sub>
+  <sub><a href="assets/video/reliagate.mp4">Watch the 8-second film (MP4, 0.2 MB)</a>. Every number in it comes from the committed results in this repo.</sub>
 </p>
 
 **Status: v0.1.0 -- mechanism implemented, offline-tested, and [validated on real benchmark data](docs/results/first-study.md) (gate-calibrated tau-bench retail trajectories; ROADMAP item 1 done).**
