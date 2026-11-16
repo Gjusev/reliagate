@@ -5,6 +5,21 @@
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/logo-animated-dark.svg">
+    <img src="assets/logo/logo-animated-light.svg" alt="reliagate: k runs per task fill a consistency grid, then the CI band appears" width="560">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="assets/video/reliagate.mp4">
+    <img src="assets/video/preview.gif" alt="A 3x3 grid of trial dots fills; one stays hollow, one turns amber, then a confidence-interval bracket draws above" width="720">
+  </a>
+  <br>
+  <sub><a href="assets/video/reliagate.mp4">Watch the 8-second film (MP4, 0.1 MB)</a>. Every number in it comes from the committed results in this repo.</sub>
+</p>
+
 **Status: v0.1.0 -- mechanism implemented, offline-tested, and [validated on real benchmark data](docs/results/first-study.md) (gate-calibrated tau-bench retail trajectories; ROADMAP item 1 done).**
 
 Most agent evaluations run each task once and gate CI on a raw score threshold, so run-to-run noise produces both false regressions and false all-clears. `reliagate` treats the *task* as the unit of inference: run each task `k` times, measure whether it is **consistently** solved, and gate on a paired statistical test between two versions instead of a noisy threshold. It exists because no surveyed tool (Inspect AI, tau2-bench, Langfuse, LangSmith, DeepEval, ...) combines repeated-run reliability metrics, paired significance testing, and an exit-coded CI gate in one package.
