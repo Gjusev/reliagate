@@ -54,7 +54,7 @@ from reliagate import read_jsonl, plan
 
 pilot = read_jsonl("evals/main.jsonl")
 p = plan(pilot, effect=0.10)      # detect a 10-point drop in consistently-solved tasks
-p.n_tasks, p.achieved_power       # e.g. (143, 0.82) for the example pilot
+p.n_tasks, p.achieved_power       # e.g. (153, 0.805) for the example pilot
 p.assumptions                     # stated, not hidden
 ```
 

@@ -144,3 +144,30 @@ class TestSprt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSimulatedTable(unittest.TestCase):
+    def test_each_task_lands_in_one_cell(self):
+        # A draw sequence that the old per-cell sampling double-counted: with
+        # p_base = p_new = 0.5, draws (0.9, 0.1) make the task a gain; separate
+        # draws for the loss cell could make the same task a loss as well.
+        from reliagate.planning import _simulate_discordant
+
+        class Seq:
+            def __init__(self, xs):
+                self.xs = list(xs)
+
+            def random(self):
+                return self.xs.pop(0)
+
+        b, c = _simulate_discordant(1, 0.5, 0.5, Seq([0.9, 0.1, 0.1, 0.9]))
+        self.assertEqual((b, c), (1, 0))
+
+    def test_discordant_never_exceeds_tasks(self):
+        import random
+        from reliagate.planning import _simulate_discordant
+
+        rng = random.Random(0)
+        for _ in range(200):
+            b, c = _simulate_discordant(30, 0.6, 0.4, rng)
+            self.assertLessEqual(b + c, 30)

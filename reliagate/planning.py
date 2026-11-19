@@ -41,6 +41,23 @@ class PlanResult:
     power_curve: list[dict] = field(default_factory=list)
 
 
+def _simulate_discordant(n_tasks: int, p_base: float, p_new: float, rng: random.Random) -> tuple[int, int]:
+    """Discordant counts (b gained, c lost) of one simulated paired study.
+
+    One (base, new) indicator pair is drawn per task, so each task lands in
+    exactly one cell of the paired 2x2 table and b + c <= n_tasks.
+    """
+    b = c = 0
+    for _ in range(n_tasks):
+        z_base = rng.random() < p_base
+        z_new = rng.random() < p_new
+        if z_new and not z_base:
+            b += 1
+        elif z_base and not z_new:
+            c += 1
+    return b, c
+
+
 def _simulate_power(
     n_tasks: int,
     p_base: float,
@@ -52,10 +69,7 @@ def _simulate_power(
     p_new = min(1.0, p_base + effect)
     hits = 0
     for _ in range(n_sims):
-        b = sum(1 for _ in range(n_tasks)
-                if rng.random() >= p_base and rng.random() < p_new)
-        c = sum(1 for _ in range(n_tasks)
-                if rng.random() < p_base and rng.random() >= p_new)
+        b, c = _simulate_discordant(n_tasks, p_base, p_new, rng)
         if b + c == 0:
             continue
         test_used = select_test(b + c, "auto")

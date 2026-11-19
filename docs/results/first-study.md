@@ -135,9 +135,9 @@ For each pair, both runs are restricted to tasks having all 4 trials in BOTH run
 
 | observed contrast | effect (consistency proportion) | tasks needed for 80% power |
 |---|---|---|
-| confirm_all vs calibrated_alpha0.10 | +0.0319 | 2193 (simulated power 0.838, seed 0) |
-| confirm_all vs calibrated_alpha0.05 | -0.0417 | 1399 (simulated power 0.810, seed 0) |
-| calibrated_alpha0.05 vs fixed_threshold | +0.0548 | 719 (simulated power 0.802, seed 0) |
+| confirm_all vs calibrated_alpha0.10 | +0.0319 | 2201 (simulated power 0.807, seed 0) |
+| confirm_all vs calibrated_alpha0.05 | -0.0417 | 1553 (simulated power 0.818, seed 0) |
+| calibrated_alpha0.05 vs fixed_threshold | +0.0548 | 755 (simulated power 0.823, seed 0) |
 
 ## 5. Cost and caveats: exactly where these numbers stop holding
 
