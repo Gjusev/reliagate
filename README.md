@@ -1,122 +1,115 @@
-# reliagate
-
-[![tests](https://github.com/Gjusev/reliagate/actions/workflows/tests.yml/badge.svg)](https://github.com/Gjusev/reliagate/actions/workflows/tests.yml)
-[![dependencies](https://img.shields.io/badge/dependencies-0-success)]()
-[![python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/logo-animated-dark.svg">
-    <img src="assets/logo/logo-animated-light.svg" alt="reliagate: k runs per task fill a consistency grid, then the CI band appears" width="560">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lockup-dark.svg">
+    <img src="assets/brand/lockup-light.svg" alt="reliagate" width="420">
   </picture>
 </p>
 
 <p align="center">
-  <a href="assets/video/reliagate.mp4">
-    <img src="assets/video/preview.gif" alt="reliagate: the animated mark beside the headline number, 141 offline tests, zero dependencies" width="720">
-  </a>
-  <br>
-  <sub><a href="assets/video/reliagate.mp4">Watch the 8-second film (MP4, 0.2 MB)</a>. Every number in it comes from the committed results in this repo.</sub>
+  <b>Your agent passed CI once. That proves nothing.</b><br>
+  Reliability metrics and statistically sound CI gates for AI agents evaluated with repeated runs.
 </p>
 
-**Status: v0.1.0 -- mechanism implemented, offline-tested, and [validated on real benchmark data](docs/results/first-study.md) (gate-calibrated tau-bench retail trajectories; ROADMAP item 1 done).**
+<p align="center">
+  <a href="https://github.com/Gjusev/reliagate/actions/workflows/tests.yml"><img src="https://github.com/Gjusev/reliagate/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <img src="https://img.shields.io/badge/dependencies-0-2EBD78" alt="zero dependencies">
+  <img src="https://img.shields.io/badge/python-3.10%2B-2EBD78" alt="python 3.10+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EBD78" alt="MIT license"></a>
+</p>
 
-Most agent evaluations run each task once and gate CI on a raw score threshold, so run-to-run noise produces both false regressions and false all-clears. `reliagate` treats the *task* as the unit of inference: run each task `k` times, measure whether it is **consistently** solved, and gate on a paired statistical test between two versions instead of a noisy threshold. It exists because no surveyed tool (Inspect AI, tau2-bench, Langfuse, LangSmith, DeepEval, ...) combines repeated-run reliability metrics, paired significance testing, and an exit-coded CI gate in one package.
+<p align="center">
+  <a href="assets/video/reliagate.mp4"><img src="assets/video/preview.gif" alt="reliagate in 30 seconds: one run passes, four runs don't; pass@4 stays 1.00 while pass^4 drops 0.85 to 0.65; the gate exits 2" width="760"></a>
+  <br>
+  <sub><a href="assets/video/reliagate.mp4">Watch the 30-second film</a>. Every number in it is real output of this repo's <a href="examples/">example files</a>.</sub>
+</p>
 
-## Example (~15 lines)
+---
+
+Most agent evals run each task **once** and gate CI on a score threshold. Agents are stochastic, so the same commit can pass on Monday and fail on Tuesday, and you get false alarms and false all-clears.
+
+**reliagate** treats the *task* as the unit of evidence:
+
+1. **Run every task `k` times** and ask whether it is solved *consistently*, not just once.
+2. **Measure reliability**, not luck: `pass^k`, unbiased `pass@k`, consistency classes, Wilson and task-level bootstrap intervals.
+3. **Gate on a paired statistical test** between two versions (McNemar, with Wilcoxon and a Newcombe interval alongside), with exit codes your CI can trust.
+
+Pure Python, **zero dependencies**, 142 offline tests.
+
+## Why pass@k is not enough
+
+The film above uses the two files in [`examples/`](examples/): the same 40 tasks, 4 runs each, before and after a change.
+
+| | v1 | v2 |
+|---|---|---|
+| `pass@4`: solved at least once | **1.00** | **1.00** |
+| `pass^4`: solved every time | **0.85** | **0.65** |
+
+`pass@4` says nothing changed. In fact 9 tasks that used to pass every run now fail some of the time, and only 1 went the other way:
+
+```console
+$ reliagate gate --base examples/base.jsonl --new examples/new.jsonl
+gate decision: REGRESSION (exit 2)
+  consistently solved: base 34/40 -> new 26/40
+  gained (b)=1  lost (c)=9  b-c=-8  test=mcnemar_exact  p=0.02148
+  ...
+```
+
+## Quickstart
+
+```bash
+pip install git+https://github.com/Gjusev/reliagate
+```
 
 ```python
-from reliagate import EvalRun, Run, pass_k, compare, wilson_indicator
+from reliagate import read_jsonl, pass_k, pass_at_k, compare, gate
 
-base = EvalRun("v123", runs=[
-    Run("checkout", 0, True),  Run("checkout", 1, True),  Run("checkout", 2, False),
-    Run("refund",   0, True),  Run("refund",   1, None),  Run("refund",   2, True),
-    Run("search",   0, False), Run("search",   1, False), Run("search",   2, False),
-])
+v1 = read_jsonl("examples/base.jsonl")   # one line per trial: {"task_id", "attempt", "success"}
+v2 = read_jsonl("examples/new.jsonl")
 
-pass_k(base, k=2).value                 # pass^2 = 0.166 (only refund could pass 2/2)
-wilson_indicator(base).ci               # Pass^n CI -> (0.0, 0.716) on 1/3 consistent tasks
-compare(base_runs, new_runs).p_value    # paired McNemar (exact / mid-p), b-c signed effect
+pass_at_k(v2, k=4)                        # 1.0   solved at least once in 4
+pass_k(v2, k=4).value                     # 0.65  solved in all 4
+pass_k(v2, k=4, ci="wilson_indicator").ci # (0.495, 0.779)
+
+r = compare(v1, v2)                       # paired McNemar on "consistently solved"
+r.b, r.c, r.p_value                       # (1, 9, 0.02148)
+
+gate(v1, v2, max_regression=0.05).exit_code   # 2: significant regression
 ```
 
-And the CI gate:
+Trials are `{"task_id": "checkout", "attempt": 0, "success": true}`. `success: null` means the trial abstained or hit an infrastructure error. It stays in the denominator and is **never** counted as a failure.
 
-```bash
-reliagate gate --base base.jsonl --new new.jsonl --max-regression 0.05
-# exit 0 = pass, exit 2 = significant regression, exit 3 = infra error (never a silent pass)
+## Gate your CI
+
+```yaml
+- run: pip install git+https://github.com/Gjusev/reliagate
+- run: reliagate gate --base evals/main.jsonl --new evals/pr.jsonl --max-regression 0.05
 ```
 
-JSONL schema: one trial per line, `{"task_id": "checkout", "attempt": 0, "success": true}` -- `null` means abstained/errored.
+| Exit | Meaning |
+|---|---|
+| `0` | pass: no statistically significant regression |
+| `2` | significant regression in consistently-solved tasks |
+| `3` | infra or usage error: never a silent pass |
 
-## What it computes
+Full recipe, including how to size the run with `plan()` and stop early with SPRT: [docs/ci-gate.md](docs/ci-gate.md).
 
-| Metric | Definition | Verified against |
-|---|---|---|
-| `pass^k` | mean over tasks of `C(c,k)/C(n,k)` | brute-force k-subset enumeration; tau-bench arXiv:2406.12045 §3 |
-| `pass@k` (unbiased) | mean of `1 - C(n-c,k)/C(n,k)` | brute-force enumeration + the exact Codex Appendix A unbiasedness identity, verified with rational arithmetic (arXiv:2107.03374) |
-| `consistency` | consistently / sometimes / never solved | arXiv:2604.17849 §2.2 |
-| `wilson_ci` | Wilson score interval | published anchor value 0/10 → [0, 0.2775]; non-degenerate at p̂=0/1 (arXiv:2605.08261 §4.2) |
-| bootstrap CI | percentile CI resampling **tasks**, never trials within a task | arXiv:2605.08261 §4.3 (rollout-only bootstrap = 17% coverage) |
-| `compare` | McNemar on `z_x = 1[c_x == n]`, exact when discordant < 25 else mid-p | hand-computed exact/mid-p values, incl. the b=5,c=0 disagreement case (Fagerland et al. 2013) |
-| `required_runs` / `plan` | simulation-based task-count planning under documented assumptions | deterministic seeded sims; power grows as effect shrinks |
-| `sprt_stop` | Wald SPRT over the per-task indicator stream; capped runs are INCONCLUSIVE, never a pass | Wald boundaries `ln((1-β)/α)`, `ln(β/(1-α))` |
-| `wilcoxon_signed_rank` | signed-rank on paired `d_x = c_new - c_base`; average-rank ties, zeros dropped; exact 2^n for n ≤ 20, tie-corrected normal approx above | hand-computed small-n cases; brute-force sign enumeration agreement (arXiv:2604.17849 §2.2) |
-| `holm_adjust` / `benjamini_hochberg_adjust` | FWER step-down / FDR step-up corrections over a family of p-values; `compare(correction=..., task_categories=...)` wires them over per-category McNemar families | hand-computed 4-p family; step-down/step-up rejection-set agreement |
-| `hierarchical_bootstrap` | percentile CI resampling scenarios → tasks; per-task run aggregates held fixed during resample | deterministic seeds; fixed replicate structure (arXiv:2605.08261 §4.3) |
-| `newcombe_paired` | hybrid-score interval for the difference of two paired proportions (Wilson marginals + observed within-pair correlation) | interval contains d̂ on randomized tables; published closed form re-derivation |
+## Documentation
 
-## Design decisions you should know
+| | |
+|---|---|
+| [Getting started](docs/getting-started.md) | data format, the example walkthrough, collecting runs |
+| [Metrics](docs/metrics.md) | every estimator, its definition and what it is verified against |
+| [CI gate](docs/ci-gate.md) | GitHub Actions recipe, exit codes, planning and early stopping |
+| [Design and limitations](docs/design.md) | abstentions, zero dependencies, what reliagate does not do |
+| [First real study](docs/results/first-study.md) | the toolkit on 494 real tau-bench retail tasks |
+| [Roadmap](ROADMAP.md) | what's done and what's next |
 
-- **Abstentions are never failures.** `success=None` trials count in the denominator `n`, are excluded from successes `c` (the conservative direction), and every report states this treatment explicitly. This closes the ambiguity tau2-bench hit (issue #497): the convention cannot silently change task weights.
-- **`consistent` requires decisive evidence.** A task with an abstained trial cannot be `consistent`, because consistency claims all-n success.
-- **Zero dependencies.** The core is pure stdlib (`math.comb`, `math.erf`, `random.Random` with fixed seeds). Tests run with plain `python3 -m unittest` -- no numpy, no scipy, no pytest.
-- **Exact integer combinatorics.** Estimators use `math.comb`, matching the papers' closed forms without float accumulation.
+## Validated on real data
 
-## Live runs (opt-in)
+[docs/results/first-study.md](docs/results/first-study.md) applies reliagate to real tau-bench retail trajectories, regenerated deterministically by `scripts/first_study.py` with no LLM calls. On 494 tasks at k=2, **pass^2 = 0.907** (Wilson 95% CI [0.878, 0.930]). With k=4, the pass@k minus pass^k gap reaches **+0.20** for one gating policy. All five paired policy comparisons come out null and underpowered, and the study says so instead of rounding them into a win.
 
-All live agent runs of this library use the **Z.ai Coding Plan** endpoint, OpenAI-compatible:
+## Contributing
 
-- base URL: `https://api.z.ai/api/coding/paas/v4`
-- model: `glm-5.3-flash` (pinned -- the only supported model)
-- key: `RELIAGATE_ZAI_KEY` environment variable
+Issues and PRs are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: the core stays stdlib-only and every claim must be backed by a test or a rerunnable script. If you use reliagate in research, please cite it ([CITATION.cff](CITATION.cff)).
 
-The live path (`reliagate.adapters.runner.make_zai_agent_fn`) is strictly opt-in behind that env var; nothing in the library touches the network without it, and all statistics + tests are offline and key-free. On any billing or endpoint error the runner **stops and raises** -- it never falls back to another provider or to pay-per-call endpoints.
-
-## Limitations (honest)
-
-- **Single-model pair comparisons only.** `compare` tests two versions of one agent on one task set; it does not rank many agents.
-- **Per-task binary outcomes.** Trials are pass/fail/abstain. Partial scores (`Trial.score` in the source research) are not yet modeled.
-- **Small-sample caveats.** The exact McNemar test is conservative; mid-p is closer to nominal but neither is magic. Below ~10 tasks the gate's "not significant" often means "underpowered" -- use `plan()` to size the study first. Bootstrap CIs with <20 tasks are wide by construction.
-- **Planning assumptions are simple** (independent Bernoulli indicators); real paired runs share task difficulty, which usually makes real power *better* than simulated, but this is unverified against real data so far.
-
-## First real study (done)
-
-[docs/results/first-study.md](docs/results/first-study.md) applies the whole toolkit to the real gate-calibrated tau-bench retail trajectories (rerunnable via `scripts/first_study.py`; no LLM calls). Headlines:
-
-- **glm-5.3-flash, split=all, k=2 (494 tasks):** pass^1 = 0.9160; consistently-solved (2/2) = 0.9069, Wilson 95% CI [0.8780, 0.9295]; unbiased pass@2 = 0.9251. The pass@k − pass^k gap is real (+0.0182 at k=2, up to +0.1979 at k=4 with calibration α=0.05).
-- **Policy comparisons (k=4, 73–96 shared tasks each):** every paired comparison (confirm_all / fixed_threshold / calibrated α ∈ {0.02, 0.05, 0.10}) is null — McNemar, Wilcoxon and Holm/BH-adjusted p-values all ≫ 0.05, all Newcombe intervals contain 0. The observed ~0.03–0.05 effects would need 700–2200 paired tasks for 80% power; these runs have <100.
-- **glm-5.3 vs glm-5.3-flash pilots:** 12 shared fit tasks, k=1 — the paper's consistency McNemar is NOT computable (needs k>1); plain per-task McNemar gives zero discordant pairs, i.e. no information. Documented as an honest deviation.
-
-Caveats (one domain, one harness, k small, effect sizes below the power floor) are stated in full in the study document.
-
-## Install / test
-
-```bash
-git clone https://github.com/Gjusev/reliagate && cd reliagate
-python3 -m unittest          # 141 tests, zero dependencies required
-pip install .                # optional; provides the `reliagate` command
-```
-
-See [ROADMAP.md](ROADMAP.md) for what's next and [CONTINUE.md](CONTINUE.md) if you are a coding agent picking this up.
-
-## References
-
-- Yao et al., τ-bench, arXiv:2406.12045 (pass^k, §3)
-- Chen et al., Codex/HumanEval, arXiv:2107.03374 (unbiased pass@k, §2.1 + App. A)
-- *On the Reliability of Computer Use Agents*, arXiv:2604.17849 (§2.2 consistency classes, McNemar on z_x)
-- *Computer Use at the Edge of the Statistical Precipice*, arXiv:2605.08261 (§4.2 Wilson, §4.3 task-level bootstrap)
-- Fagerland, Lydersen & Laake 2013, Stat Med 32:3086 (exact vs mid-p McNemar)
-- tau2-bench issue #497 (infra-error convention ambiguity)
-
-MIT -- Youssef Ouhaghi, 2026.
+MIT © 2026 Youssef Ouhaghi

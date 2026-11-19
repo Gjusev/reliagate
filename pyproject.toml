@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "reliagate"
 version = "0.1.0"
-description = "Reliability metrics and statistically sound CI gates for AI agents evaluated with repeated runs"
+description = "Your agent passed CI once. That proves nothing. Reliability metrics and statistically sound CI gates for AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -29,6 +29,8 @@ reliagate = "reliagate.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Gjusev/reliagate"
+Documentation = "https://github.com/Gjusev/reliagate/tree/main/docs"
+Issues = "https://github.com/Gjusev/reliagate/issues"
 
 [tool.setuptools.packages.find]
 include = ["reliagate*"]
