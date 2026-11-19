@@ -4,6 +4,8 @@
 
 - **The task is the unit of inference.** Trials within a task are not independent evidence. Intervals resample tasks, and comparisons pair tasks across versions.
 - **Abstentions are never failures.** `success: null` stays in the denominator `n` and is excluded from successes `c`, the conservative direction. Every report states this treatment, so the convention can't change silently (the ambiguity tau2-bench hit in issue #497).
+- **Infrastructure can't fake a verdict.** Because abstentions count against consistency, a version with more infra errors looks worse. The gate refuses to judge (exit 3) when either version has more than `max_abstention` (default 5%) of its trials abstained, and it requires the same number of trials per task in both versions.
+- **"Not significant" is not "safe".** A drop beyond the allowed margin that the test can't confirm is reported as inconclusive (exit 4), never as a pass.
 - **"Consistent" needs decisive evidence.** A task with an abstained trial can't be consistent, because consistency claims success on all `n` runs.
 - **Exact integer combinatorics.** Estimators use `math.comb`, matching the papers' closed forms without float accumulation.
 - **Zero dependencies.** The core is stdlib only (`math.comb`, `math.erf`, seeded `random.Random`). The test suite runs with plain `python -m unittest` on Linux, Windows and macOS, Python 3.10 to 3.13.

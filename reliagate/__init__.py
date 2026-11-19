@@ -46,6 +46,7 @@ from .planning import (
 )
 from .gate import (
     EXIT_ERROR,
+    EXIT_INCONCLUSIVE,
     EXIT_PASS,
     EXIT_REGRESSION,
     GateReport,
@@ -53,7 +54,7 @@ from .gate import (
 )
 from .adapters.jsonl import JSONLError, read_jsonl, write_jsonl
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "EvalRun",
@@ -91,6 +92,7 @@ __all__ = [
     "required_runs",
     "sprt_stop",
     "EXIT_ERROR",
+    "EXIT_INCONCLUSIVE",
     "EXIT_PASS",
     "EXIT_REGRESSION",
     "GateReport",

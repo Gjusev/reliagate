@@ -5,8 +5,8 @@ authors:
   - family-names: Ouhaghi
     given-names: Youssef
 type: software
-version: 0.1.0
-date-released: "2026-11-16"
+version: 0.2.0
+date-released: "2026-11-19"
 license: MIT
 repository-code: "https://github.com/Gjusev/reliagate"
 keywords:

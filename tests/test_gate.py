@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-from reliagate.gate import EXIT_ERROR, EXIT_PASS, EXIT_REGRESSION, gate
+from reliagate.gate import EXIT_ERROR, EXIT_INCONCLUSIVE, EXIT_PASS, EXIT_REGRESSION, gate
 
 from .test_estimators_property import make_run
 
@@ -41,7 +41,7 @@ class TestGateFunction(unittest.TestCase):
         self.assertEqual(report.decision, "regression")
         self.assertIn("significant", report.reason)
 
-    def test_big_drop_but_not_significant_stays_0(self):
+    def test_big_drop_but_not_significant_is_inconclusive_4(self):
         # 2 of 6 tasks lost: exact p = 2*(1+6)/64 > 0.05 -> not significant
         base = make_run({f"t{i}": [True, True] for i in range(6)})
         new = make_run({
@@ -49,7 +49,9 @@ class TestGateFunction(unittest.TestCase):
             **{f"t{i}": [True, False] for i in range(4, 6)},
         })
         report = gate(base, new)
-        self.assertEqual(report.exit_code, EXIT_PASS)
+        # not significant is not "safe": a big drop on too few tasks is 4, never 0
+        self.assertEqual(report.exit_code, EXIT_INCONCLUSIVE)
+        self.assertEqual(report.decision, "inconclusive")
         self.assertIn("NOT statistically significant", report.reason)
 
     def test_significant_but_within_margin_stays_0(self):
@@ -78,18 +80,34 @@ class TestGateFunction(unittest.TestCase):
     def test_report_includes_abstention_treatment(self):
         base = make_run({"a": [True, True]})
         new = make_run({"a": [True, None]})
-        report = gate(base, new)
+        report = gate(base, new, max_regression=1.0, max_abstention=1.0)
         self.assertEqual(report.exit_code, EXIT_PASS)
         self.assertEqual(
             report.abstention["new"]["trials_abstained"], 1
         )
         self.assertIn("never", report.abstention["new"]["treatment"])
 
+    def test_too_many_abstentions_is_infra_error_3(self):
+        # new loses consistency only through infra errors: that must not read
+        # as an agent regression (2); above max_abstention the gate refuses (3)
+        base = make_run({f"t{i}": [True, True] for i in range(10)})
+        new = make_run({f"t{i}": [True, None] for i in range(10)})
+        report = gate(base, new)
+        self.assertEqual(report.exit_code, EXIT_ERROR)
+        self.assertIn("max-abstention", report.reason)
+        self.assertEqual(gate(base, new, max_abstention=1.0).exit_code, EXIT_REGRESSION)
+
+    def test_bad_max_abstention_exit_3(self):
+        base = make_run({"a": [True]})
+        self.assertEqual(gate(base, base, max_abstention=1.5).exit_code, EXIT_ERROR)
+
     def test_to_dict_roundtrip(self):
         base = make_run({"a": [True, True], "b": [True, True]})
         new = make_run({"a": [True, False], "b": [True, True]})
         d = gate(base, new).to_dict()
-        self.assertEqual(d["decision"], "pass")
+        # a 50-point drop on 2 tasks cannot be significant: inconclusive, not pass
+        self.assertEqual(d["decision"], "inconclusive")
+        self.assertEqual(d["exit_code"], 4)
         self.assertEqual(d["comparison"]["c_lost"], 1)
         self.assertEqual(d["comparison"]["b_gained"], 0)
 

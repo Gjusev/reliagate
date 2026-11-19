@@ -1,16 +1,16 @@
 """CI gate: exits non-zero on a statistically significant regression.
 
 Exit codes (explicit, so CI never guesses):
-    0  gate passed -- no significant regression beyond --max-regression
-    2  significant statistical regression detected
+    0  gate passed -- the drop in consistently-solved tasks is within
+       --max-regression
+    2  significant statistical regression: the drop exceeds --max-regression
+       AND the paired McNemar (auto exact/mid-p) p-value is below alpha
     3  infra/usage error -- unreadable files, malformed JSONL, mismatched
-       task sets, argument errors.  NEVER silently passes: any doubt is 3.
-
-Regression rule: the gate fails (2) only when the drop in the fraction of
-consistently-solved tasks exceeds --max-regression AND the paired McNemar
-(auto exact/mid-p) p-value is below alpha.  A tiny-but-significant dip
-within the allowed margin passes; a big-but-noisy dip is reported as not
-significant, not as a regression.
+       task sets or trial counts, argument errors, or more abstained trials
+       than --max-abstention allows.  NEVER silently passes: any doubt is 3.
+    4  inconclusive: the drop exceeds --max-regression but is not
+       significant.  "Not significant" is not "safe": the study is too small
+       to tell, so the gate neither passes nor claims a regression.
 """
 
 from __future__ import annotations
@@ -25,11 +25,12 @@ from .model import EvalRun, abstention_report
 EXIT_PASS = 0
 EXIT_REGRESSION = 2
 EXIT_ERROR = 3
+EXIT_INCONCLUSIVE = 4
 
 
 @dataclass
 class GateReport:
-    decision: str                 # "pass" | "regression" | "error"
+    decision: str                 # "pass" | "regression" | "inconclusive" | "error"
     exit_code: int
     reason: str
     base_pass_pow_n: Optional[float] = None
@@ -70,8 +71,16 @@ def gate(
     new: EvalRun,
     max_regression: float = 0.05,
     alpha: float = 0.05,
+    max_abstention: float = 0.05,
 ) -> GateReport:
-    """Run the gate.  Raises nothing on data problems -- returns exit 3."""
+    """Run the gate.  Raises nothing on data problems -- returns exit 3.
+
+    ``max_abstention`` caps the share of abstained/infra-errored trials in
+    either version.  Abstentions count in n and never as successes, so a
+    version with more infra errors looks less consistent; above the cap the
+    verdict would measure the infrastructure, not the agent, and the gate
+    returns 3 instead.
+    """
     if not 0 <= max_regression <= 1:
         return GateReport(
             "error", EXIT_ERROR,
@@ -80,6 +89,11 @@ def gate(
     if not 0 < alpha < 1:
         return GateReport(
             "error", EXIT_ERROR, f"alpha must be in (0, 1), got {alpha}",
+        )
+    if not 0 <= max_abstention <= 1:
+        return GateReport(
+            "error", EXIT_ERROR,
+            f"--max-abstention must be in [0, 1], got {max_abstention}",
         )
 
     try:
@@ -108,6 +122,22 @@ def gate(
         abstention=abstention,
     )
 
+    rates = {
+        side: (a["trials_abstained"] / a["trials_total"] if a["trials_total"] else 0.0)
+        for side, a in abstention.items()
+    }
+    worst = max(rates, key=rates.get)
+    if rates[worst] > max_abstention:
+        report.decision = "error"
+        report.exit_code = EXIT_ERROR
+        report.reason = (
+            f"{worst} has {rates[worst]:.1%} abstained/infra-errored trials "
+            f"(> max-abstention {max_abstention:.1%}); a verdict would measure "
+            "the infrastructure, not the agent -- fix the runs or raise "
+            "--max-abstention deliberately"
+        )
+        return report
+
     if drop > max_regression and cmp.p_value < alpha:
         report.decision = "regression"
         report.exit_code = EXIT_REGRESSION
@@ -118,10 +148,12 @@ def gate(
             f"b-c={cmp.b_minus_c}"
         )
     elif drop > max_regression:
+        report.decision = "inconclusive"
+        report.exit_code = EXIT_INCONCLUSIVE
         report.reason = (
             f"drop {drop:.4f} exceeds max-regression but is NOT statistically "
             f"significant ({cmp.test_used} p={cmp.p_value:.4g} >= alpha={alpha}); "
-            "gate passes -- widen the study before trusting this"
+            "inconclusive -- the study is too small to tell; size it with plan()"
         )
     elif cmp.p_value < alpha and cmp.b_minus_c < 0:
         report.reason = (

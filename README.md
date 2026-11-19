@@ -33,7 +33,7 @@ Most agent evals run each task **once** and gate CI on a score threshold. Agents
 2. **Measure reliability**, not luck: `pass^k`, unbiased `pass@k`, consistency classes, Wilson and task-level bootstrap intervals.
 3. **Gate on a paired statistical test** between two versions (McNemar, with Wilcoxon and a Newcombe interval alongside), with exit codes your CI can trust.
 
-Pure Python, **zero dependencies**, 146 offline tests.
+Pure Python, **zero dependencies**, 148 offline tests.
 
 ## Why pass@k is not enough
 
@@ -87,9 +87,10 @@ Trials are `{"task_id": "checkout", "attempt": 0, "success": true}`. `success: n
 
 | Exit | Meaning |
 |---|---|
-| `0` | pass: no statistically significant regression |
+| `0` | pass: the drop in consistently-solved tasks is within `--max-regression` |
 | `2` | significant regression in consistently-solved tasks |
-| `3` | infra or usage error: never a silent pass |
+| `3` | infra or usage error, including too many infra-errored trials: never a silent pass |
+| `4` | inconclusive: a drop beyond the limit that the data can't confirm. Run more tasks |
 
 Full recipe, including how to size the run with `plan()` and stop early with SPRT: [docs/ci-gate.md](docs/ci-gate.md).
 
@@ -102,6 +103,7 @@ Full recipe, including how to size the run with `plan()` and stop early with SPR
 | [CI gate](docs/ci-gate.md) | GitHub Actions recipe, exit codes, planning and early stopping |
 | [Design and limitations](docs/design.md) | abstentions, zero dependencies, what reliagate does not do |
 | [First real study](docs/results/first-study.md) | the toolkit on 494 real tau-bench retail tasks |
+| [Changelog](CHANGELOG.md) | what changed in each release |
 | [Roadmap](ROADMAP.md) | what's done and what's next |
 
 ## Validated on real data

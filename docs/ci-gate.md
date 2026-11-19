@@ -1,25 +1,27 @@
 # The CI gate
 
 ```bash
-reliagate gate --base base.jsonl --new new.jsonl [--max-regression 0.05] [--alpha 0.05] [--json]
+reliagate gate --base base.jsonl --new new.jsonl [--max-regression 0.05] [--alpha 0.05] [--max-abstention 0.05] [--json]
 ```
 
-The gate fails only when **both** of these hold:
+The gate looks at the drop in the share of consistently-solved tasks:
 
-1. the share of consistently-solved tasks dropped by more than `--max-regression`, and
-2. the drop is statistically significant: the paired McNemar p-value is below `--alpha`.
+- within `--max-regression`: **pass** (0)
+- beyond it, and the paired McNemar p-value is below `--alpha`: **regression** (2)
+- beyond it, but not significant: **inconclusive** (4). "Not significant" is not "safe": the study is too small to tell. Size it with `plan()` and rerun.
 
-A small dip that the data can't distinguish from noise passes. A large, real drop fails.
+Before judging, the gate checks the data: both versions need the same tasks with the same number of trials each, and neither may have more than `--max-abstention` of its trials abstained or infra-errored. Otherwise the verdict would measure the data or the infrastructure, not the agent, so the gate returns 3.
 
 ## Exit codes are a contract
 
 | Exit | Decision | When |
 |---|---|---|
-| `0` | `pass` | no significant regression |
-| `2` | `regression` | significant drop in consistently-solved tasks |
-| `3` | `error` | unreadable or malformed input, mismatched task sets, invalid arguments |
+| `0` | `pass` | the drop is within `--max-regression` |
+| `2` | `regression` | significant drop beyond `--max-regression` |
+| `3` | `error` | unreadable or malformed input, mismatched tasks or trial counts, too many abstained trials, invalid arguments |
+| `4` | `inconclusive` | a drop beyond `--max-regression` that is not significant |
 
-`2` always means a statistical regression and nothing else. Argument errors exit `3`, not argparse's default `2`. Infra failures never exit `0`.
+`2` always means a statistical regression and nothing else. Argument errors exit `3`, not argparse's default `2`. Infra failures never exit `0`. Whether `4` blocks your merge is your call; most teams should treat it as a failure until the study is big enough.
 
 ## GitHub Actions
 
@@ -40,6 +42,7 @@ jobs:
       - run: python evals/run.py --k 4 --out evals/pr.jsonl
 
       # evals/main.jsonl: the baseline, committed or downloaded from the main branch's last run.
+      # Exit 4 (inconclusive) fails the step too; allow it with `|| [ $? -eq 4 ]` if you prefer.
       - run: reliagate gate --base evals/main.jsonl --new evals/pr.jsonl --max-regression 0.05
 ```
 

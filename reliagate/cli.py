@@ -5,7 +5,7 @@ Subcommands:
     compare   human-readable comparison report, no exit code semantics.
 
 Exit codes for `gate` (see reliagate.gate):
-    0 pass -- 2 significant regression -- 3 infra/usage error.
+    0 pass -- 2 significant regression -- 3 infra/usage error -- 4 inconclusive.
 Argument/usage errors also exit 3, never argparse's default 2, so "2"
 always means exactly one thing: statistical regression.
 """
@@ -42,7 +42,7 @@ def _build_parser() -> _ArgErrorParser:
 
     g = sub.add_parser(
         "gate",
-        help="CI gate: exit 0 pass / 2 significant regression / 3 infra error",
+        help="CI gate: exit 0 pass / 2 significant regression / 3 infra error / 4 inconclusive",
     )
     g.add_argument("--base", required=True, help="base version trials (JSONL)")
     g.add_argument("--new", required=True, help="candidate trials (JSONL)")
@@ -55,6 +55,13 @@ def _build_parser() -> _ArgErrorParser:
     )
     g.add_argument(
         "--alpha", type=float, default=0.05, help="significance level (default 0.05)"
+    )
+    g.add_argument(
+        "--max-abstention",
+        type=float,
+        default=0.05,
+        help="max share of abstained/infra-errored trials in either version "
+        "before the gate refuses to judge (exit 3; default 0.05)",
     )
     g.add_argument(
         "--json", action="store_true", help="print the full report as JSON"
@@ -85,7 +92,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "gate":
         base = _load(args.base)
         new = _load(args.new)
-        report = gate(base, new, max_regression=args.max_regression, alpha=args.alpha)
+        report = gate(
+            base, new, max_regression=args.max_regression, alpha=args.alpha,
+            max_abstention=args.max_abstention,
+        )
         if args.json:
             print(json.dumps(report.to_dict(), indent=2))
         else:
