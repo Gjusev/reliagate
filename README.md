@@ -33,7 +33,7 @@ Most agent evals run each task **once** and gate CI on a score threshold. Agents
 2. **Measure reliability**, not luck: `pass^k`, unbiased `pass@k`, consistency classes, Wilson and task-level bootstrap intervals.
 3. **Gate on a paired statistical test** between two versions (McNemar, with Wilcoxon and a Newcombe interval alongside), with exit codes your CI can trust.
 
-Pure Python, **zero dependencies**, 142 offline tests.
+Pure Python, **zero dependencies**, 146 offline tests.
 
 ## Why pass@k is not enough
 

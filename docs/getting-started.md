@@ -12,7 +12,7 @@ Or work from a clone. Nothing needs installing to run the tests:
 
 ```bash
 git clone https://github.com/Gjusev/reliagate && cd reliagate
-python -m unittest discover        # 142 tests, offline, stdlib only
+python -m unittest discover        # 146 tests, offline, stdlib only
 python -m reliagate --version
 ```
 
