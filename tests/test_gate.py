@@ -146,6 +146,16 @@ class TestGateCLI(unittest.TestCase):
         proc = self._run_cli("--base", self.base_path, "--new", self.new_path)
         self.assertEqual(proc.returncode, 3)
 
+    def test_exit_3_on_invalid_alpha_or_max_regression(self):
+        # out-of-range values are rejected by gate() before any runs are compared;
+        # the CLI must report that as exit 3, not crash with exit 1
+        write_jsonl(self.base_path, {"a": [True, True]})
+        write_jsonl(self.new_path, {"a": [True, True]})
+        for flag, value in (("--alpha", "2"), ("--max-regression", "-1")):
+            proc = self._run_cli("--base", self.base_path, "--new", self.new_path, flag, value)
+            self.assertEqual(proc.returncode, 3, proc.stderr)
+            self.assertIn("ERROR", proc.stdout)
+
     def test_exit_3_on_usage_error_not_2(self):
         # usage errors must be 3 so that exit 2 means exactly one thing
         proc = self._run_cli("--base", self.base_path)  # missing --new

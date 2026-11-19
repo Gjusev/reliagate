@@ -110,12 +110,13 @@ def main(argv: list[str] | None = None) -> int:
                     )
             print(f"  reason: {report.reason}")
             ab = report.abstention
-            print(
-                f"  abstentions: base {ab['base']['trials_abstained']}/"
-                f"{ab['base']['trials_total']} trials, "
-                f"new {ab['new']['trials_abstained']}/{ab['new']['trials_total']} "
-                f"trials (counted in n, never counted as failure)"
-            )
+            if ab:  # empty when the gate rejected its arguments before loading runs
+                print(
+                    f"  abstentions: base {ab['base']['trials_abstained']}/"
+                    f"{ab['base']['trials_total']} trials, "
+                    f"new {ab['new']['trials_abstained']}/{ab['new']['trials_total']} "
+                    f"trials (counted in n, never counted as failure)"
+                )
         raise SystemExit(report.exit_code)
     if args.command == "compare":
         base = _load(args.base)
