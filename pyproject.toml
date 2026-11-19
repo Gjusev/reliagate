@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,14 +8,16 @@ version = "0.2.0"
 description = "Your agent passed CI once. That proves nothing. Reliability metrics and statistically sound CI gates for AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Youssef Ouhaghi" }]
 keywords = ["llm-agents", "evaluation", "statistics", "pass-k", "mcnemar", "ci-gate"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Testing",
     "Topic :: Scientific/Engineering",
 ]
 # zero dependencies -- the core is pure stdlib by design

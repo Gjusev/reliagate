@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install git+https://github.com/Gjusev/reliagate
+      - run: pip install reliagate
 
       # Produce evals/pr.jsonl with your own harness: every task, k runs each.
       - run: python evals/run.py --k 4 --out evals/pr.jsonl

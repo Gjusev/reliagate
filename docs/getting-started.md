@@ -5,7 +5,7 @@
 reliagate is pure Python (3.10+) with zero runtime dependencies.
 
 ```bash
-pip install git+https://github.com/Gjusev/reliagate   # provides the `reliagate` command
+pip install reliagate   # provides the `reliagate` command
 ```
 
 Or work from a clone. Nothing needs installing to run the tests:

@@ -40,9 +40,9 @@ Ingest Langfuse experiment scores for repeated runs per dataset item. Same rules
 
 O'Brien-Fleming checkpoints for CI that evaluates per PR (simpler to reason about than SPRT for that cadence). Complements `sprt_stop`.
 
-## 9. PyPI release
+## 9. PyPI release -- DONE
 
-Item 1 is done; remaining precondition: decide whether the first study's null policy results need a second dataset (e.g. airline) before publishing.
+Published from `.github/workflows/publish.yml` with PyPI trusted publishing; every GitHub release builds, tests and uploads the package.
 
 ## Non-goals (for now)
 

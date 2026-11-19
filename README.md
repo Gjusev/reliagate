@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lockup-dark.svg">
-    <img src="assets/brand/lockup-light.svg" alt="reliagate" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Gjusev/reliagate/main/assets/brand/lockup-dark.svg">
+    <img src="https://raw.githubusercontent.com/Gjusev/reliagate/main/assets/brand/lockup-light.svg" alt="reliagate" width="420">
   </picture>
 </p>
 
@@ -14,13 +14,13 @@
   <a href="https://github.com/Gjusev/reliagate/actions/workflows/tests.yml"><img src="https://github.com/Gjusev/reliagate/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <img src="https://img.shields.io/badge/dependencies-0-2EBD78" alt="zero dependencies">
   <img src="https://img.shields.io/badge/python-3.10%2B-2EBD78" alt="python 3.10+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EBD78" alt="MIT license"></a>
+  <a href="https://github.com/Gjusev/reliagate/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EBD78" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="assets/video/reliagate.mp4"><img src="assets/video/preview.gif" alt="reliagate in 30 seconds: one run passes, four runs don't; pass@4 stays 1.00 while pass^4 drops 0.85 to 0.65; the gate exits 2" width="760"></a>
+  <a href="https://github.com/Gjusev/reliagate/blob/main/assets/video/reliagate.mp4"><img src="https://raw.githubusercontent.com/Gjusev/reliagate/main/assets/video/preview.gif" alt="reliagate in 30 seconds: one run passes, four runs don't; pass@4 stays 1.00 while pass^4 drops 0.85 to 0.65; the gate exits 2" width="760"></a>
   <br>
-  <sub><a href="assets/video/reliagate.mp4">Watch the 30-second film</a>. Every number in it is real output of this repo's <a href="examples/">example files</a>.</sub>
+  <sub><a href="https://github.com/Gjusev/reliagate/blob/main/assets/video/reliagate.mp4">Watch the 30-second film</a>. Every number in it is real output of this repo's <a href="https://github.com/Gjusev/reliagate/blob/main/examples/">example files</a>.</sub>
 </p>
 
 ---
@@ -57,7 +57,7 @@ gate decision: REGRESSION (exit 2)
 ## Quickstart
 
 ```bash
-pip install git+https://github.com/Gjusev/reliagate
+pip install reliagate
 ```
 
 ```python
@@ -81,7 +81,7 @@ Trials are `{"task_id": "checkout", "attempt": 0, "success": true}`. `success: n
 ## Gate your CI
 
 ```yaml
-- run: pip install git+https://github.com/Gjusev/reliagate
+- run: pip install reliagate
 - run: reliagate gate --base evals/main.jsonl --new evals/pr.jsonl --max-regression 0.05
 ```
 
