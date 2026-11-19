@@ -216,3 +216,18 @@ class TestCompareCompanions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnequalTrials(unittest.TestCase):
+    def test_unequal_trials_per_task_rejected(self):
+        # Same behaviour (3 of 4 pass), but new only recorded 2 runs per task:
+        # every task would look consistent and fake a significant regression.
+        from reliagate import EvalRun, Run, compare, gate
+
+        base = EvalRun("b", runs=[Run(f"t{i}", a, a != 3) for i in range(10) for a in range(4)])
+        new = EvalRun("n", runs=[Run(f"t{i}", a, a != 3) for i in range(10) for a in range(2)])
+        with self.assertRaises(ValueError):
+            compare(new, base)
+        report = gate(new, base)
+        self.assertEqual(report.exit_code, 3)
+        self.assertIn("same number of trials", report.reason)

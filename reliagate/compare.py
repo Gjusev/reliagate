@@ -125,6 +125,19 @@ def _validate_paired(base: EvalRun, new: EvalRun) -> None:
             "paired comparison requires identical task sets; "
             f"only in base: {only_base}; only in new: {only_new}"
         )
+    # "consistently solved" means c == n, so a task run fewer times is easier to
+    # call consistent: unequal n per task would turn a data difference into a
+    # (false) significant regression. Abstained trials count in n on both sides.
+    base_n = {t: len(r) for t, r in group_by_task(base).items()}
+    new_n = {t: len(r) for t, r in group_by_task(new).items()}
+    mismatched = sorted(t for t in base_n if base_n[t] != new_n[t])
+    if mismatched:
+        shown = ", ".join(f"{t} (base {base_n[t]}, new {new_n[t]})" for t in mismatched[:5])
+        more = f" and {len(mismatched) - 5} more" if len(mismatched) > 5 else ""
+        raise ValueError(
+            "paired comparison requires the same number of trials per task in "
+            f"both versions; mismatched: {shown}{more}"
+        )
 
 
 def _wilcoxon_dict(base_counts: dict, new_counts: dict, task_ids) -> Optional[dict]:
